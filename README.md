@@ -8,3 +8,5 @@ Questo progetto è estremamente intuitivo da utilizzare: è sufficiente impostar
 A quel punto, all'orario stabilito, riceverai una richiesta da Alexa e una notifica push. Se rispondi in maniera positiva a Alexa o interagisci con la notifica push, non riceverai ulteriori promemoria. In caso contrario, trascorso il tempo impostato, riceverai una nuova richiesta da Alexa e una nuova notifica."
 
 Puoi scaricare il progetto dal seguente il [link](https://community.home-assistant.io/t/reminders-with-actionable-alexa-and-push-notifications/723979). 
+
+![image](https://github.com/Home-Assistant-Pro-Team/Blueprint-Reminders-with-actionable-Alexa-and-push-notifications/assets/62516592/8258d64c-c2de-49fb-a7c5-fbf6bb9c41ce)
