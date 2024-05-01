@@ -1,1 +1,157 @@
-reminderswith actionable
+blueprint:
+  name: Reminders with actionable Alexa and push notifications
+  description: "`- Version: 1.0 -`\n\n 
+      It occurred to me to start this project since I am noticing a certain decline in my memory as I age. To make the concept clearer, I considered the case of my son, who during flu periods or particular seasons needs to take several medications. Until now, I had set alarms on the calendar, but this was not enough to remind me of everything. So, I thought of leveraging Home Assistant and Alexa to help me out.
+
+      This project is extremely intuitive to use: simply set a time, a start and end date, select one or more mobile devices, and type in the text of the notifications. It is important to note that in order to receive push notifications (although not mandatory), you must have the companion app installed. Also, to interact with Alexa, you must use the work of [Keaton Taylor](https://github.com/keatontaylor/alexa-actions).
+          
+      A quel punto, all'orario stabilito, riceverai una richiesta da Alexa e una notifica push. Se rispondi in maniera positiva a Alexa o interagisci con la notifica push, non riceverai ulteriori promemoria. In caso contrario, trascorso il tempo impostato, riceverai una nuova richiesta da Alexa e una nuova notifica."
+  domain: automation
+  author: Marco Picardo
+  homeassistant:
+    min_version: 2024.4.0
+  input:
+    orario_start:
+      default: "13:00"
+      name: Orario notifica
+      description: 'Impostare orario promemoria.
+
+
+                   Set reminder time.'
+      selector:
+        text:
+          type: time
+
+    text_notify:
+      name: Text notify
+      default: Hai un promemoria. Ok?
+      description: 'Impostare orario promemoria.
+
+
+                   Enter the text of the memo.'
+
+    date_start:
+      name: Data Inizio
+      description: 'Inserire la data inizio promemoria, se non selezionato sarà valida da oggi.
+
+
+                   Enter the reminder start date, if not selected it will be valid from today.'
+      default: "2000-01-01"
+      selector:
+        date:
+
+    date_stop:
+      name: Data fine
+      description: 'Inserire la data fine promemoria, se non selezionato non avrà una scadenza.
+
+
+                   Enter the memo end date, if not selected it will not have an expiration date.'
+      default: "3000-01-01"
+      selector:
+        date:
+
+    delay_notify:
+      name: Tempo ripeti
+      description: 'REQUISITO: Impostare il tempo per ripetere il messaggio.
+
+
+                   REQUIRED: Set the time to repeat the message.'
+      selector:
+        duration:
+
+    notify_device:
+      name: Dispositi mobile per notifiche
+      default:
+      description: 'Il dispositivo deve eseguire app ufficiale Home Assistant per ricevere le notifiche.
+
+
+                   Device must run official Home Assistant app to receive notifications.'
+      selector:
+        device:
+          multiple: true
+          integration: mobile_app
+
+  source_url: https://github.com/Home-Assistant-Pro-Team/Alexa-actionable-notification-rooms-presence/blob/main/alexa_actionable_notification_rooms_presence.yaml
+mode: restart
+trigger_variables:
+  my_event: !input text_notify
+variables:
+  text_notify: !input text_notify
+  date_start: !input date_start
+  date_stop: !input date_stop
+trigger:
+  - platform: time
+    at: !input orario_start
+  - platform: event
+    event_type: mobile_app_notification_action
+    event_data:
+      action: "{{ my_event[:50] | slugify }}"
+action:
+  - alias: >-
+      IF: Attivazione è orario promemoria. THEN: Invia avvisi ELSE: Cancella notifiche ed interrompi avvisi.
+    if:
+      - "{{ trigger.platform == 'time' }}"
+      - "{{ date_start <= now().strftime('%Y-%m-%d') <= date_stop }}"
+    then:
+      - alias: Ripeti avvisi per un massimo di 20 volte
+        repeat:
+          count: 20
+          sequence:
+            - alias: "Ripeti per ogni disposito mobile"
+              repeat:
+                for_each: !input notify_device
+                sequence:
+                  - alias: "Invia notifica al dispositivo mobile"
+                    service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                    data:
+                      message: !input text_notify
+                      data:
+                        notification_icon: "mdi:calendar-alert-outline"
+                        tag: "{{ text_notify[:50] | slugify }}"
+                        sticky: "true"
+                        actions:
+                          - action: "{{ text_notify[:50] | slugify }}"
+                            title: "OK"
+            - alias: Esegui lo script delle notifiche con action alexa
+              service: script.activate_alexa_actionable_notification
+              data:
+                text: !input text_notify
+                event_id: "{{ text_notify[:50] | slugify }}"
+                alexa_device: "{{ states.media_player |selectattr('attributes.source','eq','Local Speaker') | map(attribute='entity_id') | select('in', integration_entities('alexa_media')) | list | random }}"
+            - alias: Attendi risposta ad Alexa
+              wait_for_trigger:
+                - alias: Risposta ad Alexa
+                  platform: event
+                  event_type: alexa_actionable_notification
+                  event_data:
+                    event_id: "{{ text_notify[:50] | slugify }}"
+            - alias: >-
+                IF: risposta da alexa negativa THEN: Fai attendi per ripetere avviso ELSE: cancella notifiche e blocca automazione.
+              if:
+                - alias: Risposta positiva da alexa
+                  condition: template
+                  value_template: "{{ 'ResponseYes' != wait.trigger.event.data.event_response }}"
+              then:
+                - alias: Attendi per ripetere notifica push e messaggio alexa
+                  delay: !input delay_notify
+              else:
+                - repeat:
+                    for_each: !input notify_device
+                    sequence:
+                      - service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+                        data:
+                          message: "clear_notification"
+                          data:
+                            tag: "{{ text_notify[:50] | slugify }}"
+                - stop: Stop promemoria per risposta positiva Alexa
+    else:
+      - alias: "Ripeti per ogni disposito mobile"
+        repeat:
+          for_each: !input notify_device
+          sequence:
+            - alias: "Invia notifica al dispositivo mobile"
+              service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
+              data:
+                message: "clear_notification"
+                data:
+                  tag: "{{ text_notify[:50] | slugify }}"
