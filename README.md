@@ -6,3 +6,5 @@ Mi è venuto in mente di avviare questo progetto poiché sto constatando un cert
 Questo progetto è estremamente intuitivo da utilizzare: è sufficiente impostare un orario, una data di inizio e fine, selezionare uno o più dispositivi mobili e scrivere il testo delle notifiche. È importante notare che, per ricevere le notifiche push (anche se non obbligatorie), è necessario avere installata l'app companion. Inoltre, per interagire con Alexa, occorre utilizzare il lavoro di [Keaton Taylor](https://github.com/keatontaylor/alexa-actions).
           
 A quel punto, all'orario stabilito, riceverai una richiesta da Alexa e una notifica push. Se rispondi in maniera positiva a Alexa o interagisci con la notifica push, non riceverai ulteriori promemoria. In caso contrario, trascorso il tempo impostato, riceverai una nuova richiesta da Alexa e una nuova notifica."
+
+Puoi scaricare il progetto dal seguente il [link]([https://github.com/keatontaylor/alexa-actions](https://community.home-assistant.io/t/reminders-with-actionable-alexa-and-push-notifications/723979)). 
