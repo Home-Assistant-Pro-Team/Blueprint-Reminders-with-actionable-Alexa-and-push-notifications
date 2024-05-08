@@ -61,9 +61,24 @@ blueprint:
       selector:
         duration:
 
+    alexa_device: 
+      name: Dispositivo alexa
+      description: >-
+        Scegli il dispositivo Alexa su cui desideri ricevere l'annuncio. Se non lo selezioni, l'annuncio verrà riprodotto su un dispositivo casuale.
+
+
+        Choose the Alexa device where you want to receive the announcement. If not selected, the announcement will be played on a random device.
+      default: "media_player.alexa_random"
+      selector:
+        entity:
+          filter:
+            integration: alexa_media
+            domain: media_player
+
+
     notify_device:
       name: Dispositi mobile per notifiche
-      default:
+      default: "notify.mobile_disable"
       description:
         "Il dispositivo deve eseguire app ufficiale Home Assistant per ricevere le notifiche.
 
@@ -79,6 +94,7 @@ mode: restart
 trigger_variables:
   my_event: !input text_notify
 variables:
+  alexa_device: !input alexa_device
   text_notify: !input text_notify
   date_start: !input date_start
   date_stop: !input date_stop
@@ -101,7 +117,7 @@ action:
         repeat:
           for_each: !input notify_device
           sequence:
-            - alias: "Invia notifica al dispositivo mobile"
+            - alias: "Invia notifica al dispositivo mobile per cancellare automazione con action che riporta alla pagina dell'automazione"
               service: "notify.mobile_app_{{ device_attr(repeat.item, 'name') | slugify }}"
               data:
                 message: "{{ 'ELIMINARE PROMEMORIA: ' ~ text_notify }}"
@@ -109,7 +125,7 @@ action:
                   notification_icon: "mdi:delete"
                   sticky: "true"
                   actions:
-                    - action:  "URI"
+                    - action: "URI"
                       title: "Elimina"
                       uri: "/config/automation/edit/{{ this.attributes.id }}"
     else:
@@ -145,7 +161,12 @@ action:
                   data:
                     text: !input text_notify
                     event_id: "{{ text_notify[:50] | slugify }}"
-                    alexa_device: "{{ states.media_player |selectattr('attributes.source','eq','Local Speaker') | map(attribute='entity_id') | select('in', integration_entities('alexa_media')) | list | random }}"
+                    alexa_device: >- 
+                      {% if alexa_device == 'media_player.alexa_random' %}
+                        {{ states.media_player | selectattr('attributes.source','eq','Local Speaker') | map(attribute='entity_id') | select('in', integration_entities('alexa_media')) | list | random }}
+                      {% else %}
+                        {{ alexa_device }}
+                      {% endif %}
                 - alias: Attendi risposta ad Alexa
                   wait_for_trigger:
                     - alias: Risposta ad Alexa
